@@ -1,0 +1,19 @@
+{
+  "name": "crm-graphql",
+  "version": "1.0.0",
+  "description": "curso de GraphQL",
+  "main": "index.js",
+  "scripts": {
+    "start": "node .",
+    "dev": "nodemon ."
+  },
+  "author": "Jorge Madera",
+  "license": "ISC",
+  "dependencies": {
+    "apollo-server": "^2.16.1",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^8.2.0",
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^5.10.0"
+  }
+}

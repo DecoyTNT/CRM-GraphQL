@@ -14,11 +14,9 @@ const crearToken = (usuario) => {
 // Resolvers
 const resolvers = {
     Query: {
-        obtenerUsuario: async (_, { token }) => {
+        obtenerUsuario: async (_, { }, ctx) => {
             try {
-                const usuario = await jwt.verify(token, process.env.SECRETA);
-
-                return usuario;
+                return ctx.usuario;
             } catch (error) {
                 console.log(error);
                 throw new Error(error);
@@ -90,7 +88,7 @@ const resolvers = {
         },
         obtenerPedidosVendedor: async (_, { }, ctx) => {
             try {
-                const pedidos = await Pedido.find({ vendedor: ctx.usuario.id });
+                const pedidos = await Pedido.find({ vendedor: ctx.usuario.id }).populate('cliente');
                 return pedidos
             } catch (error) {
                 console.log(error);
@@ -100,7 +98,7 @@ const resolvers = {
         obtenerPedido: async (_, { id }, ctx) => {
             try {
                 // Verificar si el pedido existe
-                const pedido = await Pedido.findById(id);
+                const pedido = await Pedido.findById(id).populate('cliente');
                 if (!pedido) {
                     throw new Error('No existe el pedido');
                 }
@@ -253,22 +251,28 @@ const resolvers = {
 
             const { email, password } = input;
 
+            try {
+                const existeUsuario = await Usuario.findOne({ email });
+                if (!existeUsuario) {
+                    throw new Error('El email o password es incorrecto');
+                }
+
+                // Revisar si coincide el password
+                const passwordCorrecto = await bcryptjs.compare(password, existeUsuario.password);
+                if (!passwordCorrecto) {
+                    throw new Error('El email o password es incorrecto');
+                }
+
+                // Crear el token
+                return {
+                    token: crearToken(existeUsuario)
+                }
+            } catch (error) {
+                console.log(error);
+                throw new Error(error);
+            }
+
             // Revisar si el usuario existe
-            const existeUsuario = await Usuario.findOne({ email });
-            if (!existeUsuario) {
-                throw new Error('El email o password es incorrecto');
-            }
-
-            // Revisar si coincide el password
-            const passwordCorrecto = await bcryptjs.compare(password, existeUsuario.password);
-            if (!passwordCorrecto) {
-                throw new Error('El email o password es incorrecto');
-            }
-
-            // Crear el token
-            return {
-                token: crearToken(existeUsuario)
-            }
         },
         nuevoProducto: async (_, { input }) => {
             try {
@@ -388,17 +392,17 @@ const resolvers = {
 
                 // Verificar que el stock este disponible
                 for await (const prod of input.pedido) {
-                    const { id } = prod;
-                    const producto = await Producto.findById(id);
-                    if (prod.cantidad > producto.existencia) {
-                        throw new Error(`El pedido de ${producto.nombre} solo cuenta con ${producto.existencia}`);
+                    const { producto } = prod;
+                    const productoActual = await Producto.findById(producto);
+                    if (prod.cantidad > productoActual.existencia) {
+                        throw new Error(`El pedido de ${productoActual.nombre} solo cuenta con ${productoActual.existencia} unidades`);
                     }
                 }
                 for await (const prod of input.pedido) {
-                    const { id } = prod;
-                    const producto = await Producto.findById(id);
-                    producto.existencia = producto.existencia - prod.cantidad;
-                    await producto.save();
+                    const { producto } = prod;
+                    const productoActual = await Producto.findById(producto);
+                    productoActual.existencia = productoActual.existencia - prod.cantidad;
+                    await productoActual.save();
                 }
 
                 // Crear un nuevo pedido
@@ -442,24 +446,24 @@ const resolvers = {
                 if (input.pedido) {
                     // Regresar el pedido
                     for await (const prod of pedidoExiste.pedido) {
-                        const { id } = prod;
-                        const producto = await Producto.findById(id);
-                        producto.existencia = producto.existencia + prod.cantidad;
-                        await producto.save();
+                        const { producto } = prod;
+                        const productoActual = await Producto.findById(producto);
+                        productoActual.existencia = productoActual.existencia + prod.cantidad;
+                        await productoActual.save();
                     }
                     // Verificar que el stock este disponible
                     for await (const prod of input.pedido) {
-                        const { id } = prod;
-                        const producto = await Producto.findById(id);
-                        if (prod.cantidad > producto.existencia) {
-                            throw new Error(`El pedido de ${producto.nombre} solo cuenta con ${producto.existencia}`);
+                        const { producto } = prod;
+                        const productoActual = await Producto.findById(producto);
+                        if (prod.cantidad > productoActual.existencia) {
+                            throw new Error(`El pedido de ${productoActual.nombre} solo cuenta con ${productoActual.existencia}`);
                         }
                     }
                     for await (const prod of input.pedido) {
-                        const { id } = prod;
-                        const producto = await Producto.findById(id);
-                        producto.existencia = producto.existencia - prod.cantidad;
-                        await producto.save();
+                        const { producto } = prod;
+                        const productoActual = await Producto.findById(producto);
+                        productoActual.existencia = productoActual.existencia - prod.cantidad;
+                        await productoActual.save();
                     }
                 }
 
@@ -487,10 +491,10 @@ const resolvers = {
 
                 // Actualizar el stock de productos
                 for await (const prod of pedido.pedido) {
-                    const { id } = prod;
-                    const producto = await Producto.findById(id);
-                    producto.existencia = producto.existencia + prod.cantidad;
-                    await producto.save();
+                    const { producto } = prod;
+                    const productoActual = await Producto.findById(producto);
+                    productoActual.existencia = productoActual.existencia + prod.cantidad;
+                    await productoActual.save();
                 }
 
                 // Eliminar pedido

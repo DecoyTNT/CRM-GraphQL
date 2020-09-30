@@ -6,9 +6,9 @@ const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const crearToken = (usuario) => {
-    const { id, nombre, apellido, email } = usuario
+    const { id, nombre, apellido, email } = usuario;
 
-    return jwt.sign({ id, nombre, apellido, email }, process.env.SECRETA, { expiresIn: '24h' })
+    return jwt.sign({ id, nombre, apellido, email }, process.env.SECRETA, { expiresIn: '24h' });
 }
 
 // Resolvers
